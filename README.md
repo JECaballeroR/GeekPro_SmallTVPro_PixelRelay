@@ -174,14 +174,6 @@ pre-commit run --all-files
 tox
 ```
 
-## Development workflow references
-
-Repository automation follows the practices demonstrated in the two supplied
-videos:
-
-- [pre-commit workflow](https://www.youtube.com/watch?v=psjz6rwzMdk);
-- [repeatable testing and automation](https://www.youtube.com/watch?v=DhUpxWjOhME).
-
 ## Reference implementation and attribution
 
 The original device-communication approach was informed by
