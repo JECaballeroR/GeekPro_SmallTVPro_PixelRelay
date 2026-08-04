@@ -296,20 +296,27 @@ class PixelRelayApp(tk.Tk):
         self._add_entry(
             control_tab,
             4,
+            "Delay after music upload (s)",
+            "music_selection_delay_seconds",
+            "float",
+        )
+        self._add_entry(
+            control_tab,
+            5,
             "Music focus duration (s)",
             "music_focus_seconds",
             "int",
         )
         self._add_check(
             control_tab,
-            5,
+            6,
             "Keep rotating while music is playing",
             "rotate_while_playing",
         )
 
         control_buttons = ttk.Frame(control_tab)
         control_buttons.grid(
-            row=6,
+            row=7,
             column=0,
             columnspan=2,
             sticky="w",
@@ -343,7 +350,7 @@ class PixelRelayApp(tk.Tk):
             text="Rebuild gallery",
             command=lambda: self.send_monitor_command("rebuild_gallery"),
         ).grid(
-            row=7,
+            row=8,
             column=0,
             columnspan=2,
             sticky="w",
@@ -354,14 +361,15 @@ class PixelRelayApp(tk.Tk):
         ttk.Label(
             control_tab,
             text=(
-                "Music is selected with album_path. With pause-on-focus enabled, "
-                "Pixel Relay sends album_autoplay=0 and then autoplay=0. "
-                "The slideshow interval is controlled by i_i."
+                "Music is selected with album_path only. With pause-on-focus "
+                "enabled, the same request includes album_autoplay=0. No app "
+                "switch or immediate second pause request is sent. i_i is used "
+                "when rotation resumes."
             ),
             foreground="#9a9a9a",
             wraplength=680,
         ).grid(
-            row=8,
+            row=9,
             column=0,
             columnspan=2,
             sticky="w",

@@ -103,24 +103,26 @@ Tray logs:
 
 ## Direct music selection
 
-When Windows playback starts or the track identity changes, Pixel Relay uses
-the stock GeekMagic firmware endpoints instead of rebuilding the album:
+When Windows playback starts or the track identity changes, Pixel Relay waits
+briefly for the updated JPEG to settle and sends only the album selection:
 
 ```text
-/set?open_app=Picture
 /set?album_path=%2Fimage%2F00_music.jpg
 ```
 
-When **Pause autoplay while music is focused** is enabled, the selection request
-also sends `album_autoplay=0`, and Pixel Relay pauses the slideshow using:
+Pixel Relay does **not** send `open_app=Picture`.
+
+When **Pause autoplay while music is focused** is enabled, the same request also
+contains `album_autoplay=0`. No immediate second pause request is sent.
+
+After the configured focus duration, rotation resumes using:
 
 ```text
-/set?gif_loop=1&i_i=<seconds>&autoplay=0
+/set?gif_loop=1&i_i=<seconds>&autoplay=1
 ```
 
-After the configured focus duration, it resumes with the same `i_i` interval
-and `autoplay=1`. When pause-on-focus is disabled, Pixel Relay only selects
-`00_music.jpg` and leaves the current autoplay state unchanged.
+When pause-on-focus is disabled, Pixel Relay only changes `album_path` and
+leaves the current autoplay state unchanged.
 
 ## If automatic rotation stops
 

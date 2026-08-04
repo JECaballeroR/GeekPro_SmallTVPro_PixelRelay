@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.1 — 2026-08-04
+
+- Removed `open_app=Picture` from music selection.
+- Added a short configurable post-upload selection delay.
+- Removed the duplicate pause request that could produce a black frame.
+- Added music focus when playback starts, not only when the track changes.
+- Resume requests continue to use `i_i` and `autoplay=1`.
+
 ## 1.3.0 — 2026-08-04
 
 - Replaced album rebuilds with direct `album_path` image selection.

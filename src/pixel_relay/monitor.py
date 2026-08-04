@@ -222,10 +222,9 @@ class DashboardMonitor:
     async def focus_music(self, reason: str):
         """Select the music card using the stock Picture album endpoints.
 
-        When pause-on-focus is enabled, the image request sends
-        ``album_autoplay=0`` and the slideshow request sends
-        ``gif_loop=1&i_i=<seconds>&autoplay=0``. Otherwise Pixel Relay only
-        changes ``album_path`` and leaves autoplay untouched.
+        When pause-on-focus is enabled, the selection request sends
+        ``album_autoplay=0``. No app-switch or immediate second pause request
+        is sent. Rotation resumes later with the configured ``i_i`` interval.
         """
 
         if not bool(self.config["music_enabled"]):
@@ -238,6 +237,15 @@ class DashboardMonitor:
         pause_autoplay = bool(
             self.config["music_pause_autoplay_on_focus"]
         )
+
+        # Allow the device to finish replacing the JPEG before selecting it.
+        # This delay is intentionally short and happens after upload.
+        selection_delay = max(
+            0.0,
+            float(self.config["music_selection_delay_seconds"]),
+        )
+        if selection_delay:
+            await asyncio.sleep(selection_delay)
 
         await asyncio.to_thread(
             self.publisher.select_image,
@@ -261,12 +269,14 @@ class DashboardMonitor:
             + max(1, int(self.config["music_focus_seconds"]))
         )
 
-        # ``i_i`` remains the configured seconds-per-image value even while
-        # autoplay is paused, matching the stock web UX request.
-        await self.set_rotation(False, "music focus", force=True)
+        # album_autoplay=0 already paused the album. Sending another pause
+        # request immediately can leave some firmware builds on a black frame.
+        # Keep the local state synchronized and send i_i/autoplay only when the
+        # slideshow resumes.
+        self.rotation_state = False
 
         self.log(
-            "Music selected and autoplay paused; "
+            "Music selected with album_autoplay=0; "
             f"rotation will resume in {int(self.config['music_focus_seconds'])} s."
         )
 
@@ -633,12 +643,20 @@ class DashboardMonitor:
                 )
 
                 song_changed = bool(results[0])
+                playback_started = (
+                    bool(media["playing"])
+                    and not bool(self.last_playing)
+                )
 
                 if (
-                    song_changed
+                    (song_changed or playback_started)
                     and bool(self.config["music_focus_on_change"])
                 ):
-                    await self.focus_music("track changed")
+                    await self.focus_music(
+                        "track changed"
+                        if song_changed
+                        else "playback started"
+                    )
 
                 await self.process_commands(media["playing"])
                 await self.finish_music_focus_if_needed(media["playing"])

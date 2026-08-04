@@ -61,8 +61,8 @@ publisher.select_image(
 )
 ```
 
-For GeekMagic, this opens the stock Picture app and sends
-`album_path=/image/00_music.jpg`. Passing `autoplay=False` also sends
+For GeekMagic, this sends `album_path=/image/00_music.jpg` without
+switching the device application. Passing `autoplay=False` also sends
 `album_autoplay=0`; omitting it preserves the existing autoplay state.
 
 The slideshow interval is controlled separately:
