@@ -1,0 +1,8 @@
+Pillow>=10.4
+requests>=2.32
+python-dotenv>=1.0
+icalendar>=6.0
+recurring-ical-events>=3.6
+pystray>=0.19
+winrt-Windows.Media.Control>=2.3; platform_system == "Windows"
+winrt-Windows.Foundation>=2.3; platform_system == "Windows"

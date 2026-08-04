@@ -1,0 +1,41 @@
+# Secrets and machine-specific configuration
+.env
+.env.*
+!.env.example
+config.json
+config.local.json
+*.local.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Builds
+build/
+dist/
+*.egg-info/
+*.spec
+
+# Runtime
+logs/
+*.log
+*.pid
+*.lock
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+.coverage
+coverage.xml
+htmlcov/
+.tox/

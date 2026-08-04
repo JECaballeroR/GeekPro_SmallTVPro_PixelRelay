@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pixel-relay"
+version = "1.2.0"
+description = "Modular static-image relay and dashboard framework with GeekMagic support"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+  {name = "JECaballeroR"}
+]
+keywords = [
+  "display",
+  "geekmagic",
+  "image-transport",
+  "pillow",
+  "smalltv",
+  "windows",
+]
+dependencies = [
+  "Pillow>=10.4",
+  "requests>=2.32",
+  "python-dotenv>=1.0",
+  "icalendar>=6.0",
+  "recurring-ical-events>=3.6",
+  "pystray>=0.19",
+  "winrt-Windows.Media.Control>=2.3; platform_system == 'Windows'",
+  "winrt-Windows.Foundation>=2.3; platform_system == 'Windows'",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pre-commit>=4.0",
+  "pytest>=8.3",
+  "pytest-cov>=6.0",
+  "ruff>=0.9",
+  "tox>=4.23",
+]
+
+[project.scripts]
+pixel-relay = "pixel_relay.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E9", "F63", "F7", "F82"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --cov=pixel_relay --cov-report=term-missing"
+
+[tool.coverage.run]
+branch = true
+source = ["pixel_relay"]
+
+[tool.coverage.report]
+skip_empty = true
+show_missing = true
