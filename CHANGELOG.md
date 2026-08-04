@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.0 — 2026-08-04
+
+- Replaced album rebuilds with direct `album_path` image selection.
+- Added optional `album_autoplay=0` music focus behavior.
+- Added stock slideshow control using `gif_loop`, `i_i`, and `autoplay`.
+- Added `ImagePublisher.select_image()` to the public transport API.
+- Added firmware-request tests for direct selection and autoplay interval.
+- Added a UX control for pausing autoplay while music is focused.
+
 ## 1.2.0 — 2026-08-04
 
 - Corrected the previous product-name misspelling to Pixel Relay.

@@ -217,9 +217,9 @@ class PixelRelayApp(tk.Tk):
         ttk.Label(
             container,
             text=(
-                "The app controls album rotation. When the track changes, "
-                "it prioritizes the music card and then returns to the other "
-                "enabled modules."
+                "The app uses the stock Picture album API to select music "
+                "immediately and can optionally pause autoplay before returning "
+                "to the other enabled modules."
             ),
             foreground="#b8b8b8",
         ).pack(anchor="w", pady=(2, 10))
@@ -248,9 +248,9 @@ class PixelRelayApp(tk.Tk):
         ttk.Label(
             device_tab,
             text=(
-                "With exclusive control, the app can rebuild the album to "
-                "show music immediately. It does not change the device app, "
-                "theme, or menu."
+                "Exclusive control only manages which dashboard files remain "
+                "in the album. Music selection now uses album_path directly "
+                "and does not rebuild the gallery."
             ),
             foreground="#9a9a9a",
             wraplength=600,
@@ -284,26 +284,32 @@ class PixelRelayApp(tk.Tk):
         self._add_check(
             control_tab,
             2,
-            "Show music when the track changes",
+            "Show music when playback starts or the track changes",
             "music_focus_on_change",
+        )
+        self._add_check(
+            control_tab,
+            3,
+            "Pause autoplay while music is focused",
+            "music_pause_autoplay_on_focus",
         )
         self._add_entry(
             control_tab,
-            3,
+            4,
             "Music focus duration (s)",
             "music_focus_seconds",
             "int",
         )
         self._add_check(
             control_tab,
-            4,
+            5,
             "Keep rotating while music is playing",
             "rotate_while_playing",
         )
 
         control_buttons = ttk.Frame(control_tab)
         control_buttons.grid(
-            row=5,
+            row=6,
             column=0,
             columnspan=2,
             sticky="w",
@@ -337,7 +343,7 @@ class PixelRelayApp(tk.Tk):
             text="Rebuild gallery",
             command=lambda: self.send_monitor_command("rebuild_gallery"),
         ).grid(
-            row=6,
+            row=7,
             column=0,
             columnspan=2,
             sticky="w",
@@ -348,14 +354,14 @@ class PixelRelayApp(tk.Tk):
         ttk.Label(
             control_tab,
             text=(
-                "To focus music on SmallTV Pro, the app briefly leaves the music "
-                "card as the only managed file, restores the other files, and "
-                "then re-enables autoplay. It does not switch apps or use menu buttons."
+                "Music is selected with album_path. With pause-on-focus enabled, "
+                "Pixel Relay sends album_autoplay=0 and then autoplay=0. "
+                "The slideshow interval is controlled by i_i."
             ),
             foreground="#9a9a9a",
             wraplength=680,
         ).grid(
-            row=7,
+            row=8,
             column=0,
             columnspan=2,
             sticky="w",

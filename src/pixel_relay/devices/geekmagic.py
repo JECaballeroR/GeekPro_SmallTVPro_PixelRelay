@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import time
 from typing import Any
 
 import requests
@@ -23,6 +24,7 @@ class GeekMagicDevice:
         timeout: int = 25,
         *,
         session: requests.Session | None = None,
+        selection_delay: float = 0.20,
     ) -> None:
         if not host:
             raise ValueError("GeekMagic host cannot be empty.")
@@ -34,6 +36,7 @@ class GeekMagicDevice:
         )
         self.timeout = (4, int(timeout))
         self.session = session or requests.Session()
+        self.selection_delay = max(0.0, float(selection_delay))
 
     def _get(
         self,
@@ -102,16 +105,62 @@ class GeekMagicDevice:
     def delete_image(self, remote: RemoteImage) -> None:
         self._get("/delete", {"file": remote.path})
 
+    def open_picture_app(self) -> None:
+        """Open the stock Picture application."""
+
+        response = self._get(
+            "/set",
+            {"open_app": "Picture"},
+        )
+
+        if response.text.strip().upper() == "FAIL":
+            raise RuntimeError(
+                "GeekMagic rejected the Picture application request."
+            )
+
+    def select_image(
+        self,
+        filename: str,
+        *,
+        autoplay: bool | None = None,
+    ) -> None:
+        """Select an album file through the stock firmware API.
+
+        ``album_path`` selects the image. ``album_autoplay`` is omitted when
+        ``autoplay`` is ``None`` so the existing autoplay state is preserved.
+        """
+
+        self.open_picture_app()
+
+        if self.selection_delay:
+            time.sleep(self.selection_delay)
+
+        params: dict[str, Any] = {
+            "album_path": f"/image/{filename}",
+        }
+
+        if autoplay is not None:
+            params["album_autoplay"] = 1 if autoplay else 0
+
+        response = self._get("/set", params)
+
+        if response.text.strip().upper() == "FAIL":
+            raise RuntimeError(
+                f"GeekMagic rejected image selection for {filename}."
+            )
+
     def configure_rotation(
         self,
         enabled: bool,
         interval: int,
     ) -> None:
+        # Matches the stock web UX:
+        # /set?gif_loop=1&i_i=<seconds>&autoplay=<0|1>
         response = self._get(
             "/set",
             {
-                "i_i": max(1, int(interval)),
                 "gif_loop": 1,
+                "i_i": max(1, int(interval)),
                 "autoplay": 1 if enabled else 0,
             },
         )

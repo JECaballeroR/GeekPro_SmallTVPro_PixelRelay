@@ -41,6 +41,7 @@ Implement the `ImageDisplay` protocol:
 - `list_images()`;
 - `upload_image()`;
 - `delete_image()`;
+- `select_image()`;
 - `configure_rotation()`.
 
 `ImagePublisher` can then use the adapter without changes.
@@ -49,3 +50,28 @@ Implement the `ImageDisplay` protocol:
 
 If a GeekMagic display stops rotating, open its stock web UX and re-enable
 **Auto Rotate / Autoplay**. Pixel Relay can then resume the album rotation.
+
+
+## Select an image immediately
+
+```python
+publisher.select_image(
+    "00_music.jpg",
+    autoplay=False,
+)
+```
+
+For GeekMagic, this opens the stock Picture app and sends
+`album_path=/image/00_music.jpg`. Passing `autoplay=False` also sends
+`album_autoplay=0`; omitting it preserves the existing autoplay state.
+
+The slideshow interval is controlled separately:
+
+```python
+publisher.set_rotation(
+    enabled=True,
+    interval=5,
+)
+```
+
+The GeekMagic adapter maps this to `gif_loop=1`, `i_i=5`, and `autoplay=1`.

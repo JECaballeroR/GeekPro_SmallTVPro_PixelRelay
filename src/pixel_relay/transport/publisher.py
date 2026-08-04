@@ -212,7 +212,28 @@ class ImagePublisher:
         )
         return published
 
+    def select_image(
+        self,
+        filename: str,
+        *,
+        autoplay: bool | None = None,
+    ) -> None:
+        """Select an existing remote image.
+
+        ``autoplay=None`` preserves the current album autoplay state.
+        ``autoplay=False`` selects the image and pauses the album.
+        ``autoplay=True`` selects the image and explicitly enables autoplay.
+        """
+
+        remote_name = self._validate_filename(filename)
+        self.device.select_image(
+            remote_name,
+            autoplay=autoplay,
+        )
+
     def set_rotation(self, enabled: bool, interval: int) -> None:
+        """Control slideshow autoplay using the image interval."""
+
         self.device.configure_rotation(
             bool(enabled),
             max(1, int(interval)),

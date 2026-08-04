@@ -33,6 +33,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "auto_rotation_enabled": True,
     "rotation_seconds": 5,
     "music_focus_on_change": True,
+    "music_pause_autoplay_on_focus": True,
     "music_focus_seconds": 10,
     "rotate_while_playing": True,
 
@@ -100,6 +101,10 @@ ENV_FIELDS: dict[str, tuple[str, Callable[[str], Any]]] = {
     "PIXEL_AUTO_ROTATION_ENABLED": ("auto_rotation_enabled", _as_bool),
     "PIXEL_ROTATION_SECONDS": ("rotation_seconds", int),
     "PIXEL_MUSIC_FOCUS_ON_CHANGE": ("music_focus_on_change", _as_bool),
+    "PIXEL_MUSIC_PAUSE_AUTOPLAY_ON_FOCUS": (
+        "music_pause_autoplay_on_focus",
+        _as_bool,
+    ),
     "PIXEL_MUSIC_FOCUS_SECONDS": ("music_focus_seconds", int),
     "PIXEL_ROTATE_WHILE_PLAYING": ("rotate_while_playing", _as_bool),
     "PIXEL_MUSIC_ENABLED": ("music_enabled", _as_bool),

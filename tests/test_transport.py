@@ -15,6 +15,7 @@ class FakeDisplay:
     def __init__(self):
         self.images: dict[str, bytes] = {}
         self.rotation = None
+        self.selection = None
 
     def list_images(self) -> list[RemoteImage]:
         return [
@@ -31,6 +32,9 @@ class FakeDisplay:
 
     def delete_image(self, remote):
         self.images.pop(remote.name, None)
+
+    def select_image(self, filename, *, autoplay=None):
+        self.selection = (filename, autoplay)
 
     def configure_rotation(self, enabled, interval):
         self.rotation = (enabled, interval)
@@ -92,3 +96,22 @@ def test_invalid_remote_names_are_rejected(filename):
 
     with pytest.raises(InvalidImageError):
         publisher.publish_bytes(filename, b"x")
+
+
+
+def test_select_image_can_pause_album_autoplay():
+    display = FakeDisplay()
+    publisher = ImagePublisher(display)
+
+    publisher.select_image("00_music.jpg", autoplay=False)
+
+    assert display.selection == ("00_music.jpg", False)
+
+
+def test_select_image_can_preserve_autoplay_state():
+    display = FakeDisplay()
+    publisher = ImagePublisher(display)
+
+    publisher.select_image("00_music.jpg")
+
+    assert display.selection == ("00_music.jpg", None)

@@ -30,5 +30,13 @@ class ImageDisplay(Protocol):
     def delete_image(self, remote: RemoteImage) -> None:
         """Delete one previously listed image."""
 
+    def select_image(
+        self,
+        filename: str,
+        *,
+        autoplay: bool | None = None,
+    ) -> None:
+        """Select one image and optionally change album autoplay."""
+
     def configure_rotation(self, enabled: bool, interval: int) -> None:
         """Enable or disable the device slideshow."""

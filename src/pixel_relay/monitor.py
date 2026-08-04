@@ -219,30 +219,40 @@ class DashboardMonitor:
             except Exception as error:
                 self.log(f"Could not create the initial music image: {error}")
 
-    async def restore_cached_gallery(self):
-        # Restore modules in a stable order. Uploading them after music keeps the
-        # music card visible until autoplay resumes.
-        for filename in self.enabled_files_ordered():
-            if filename == MUSIC_FILE:
-                continue
-
-            content = self.content_cache.get(filename)
-            if content is None:
-                continue
-
-            await asyncio.to_thread(
-                self.publisher.publish_bytes,
-                filename,
-                content,
-            )
-
     async def focus_music(self, reason: str):
+        """Select the music card using the stock Picture album endpoints.
+
+        When pause-on-focus is enabled, the image request sends
+        ``album_autoplay=0`` and the slideshow request sends
+        ``gif_loop=1&i_i=<seconds>&autoplay=0``. Otherwise Pixel Relay only
+        changes ``album_path`` and leaves autoplay untouched.
+        """
+
         if not bool(self.config["music_enabled"]):
             return
 
-        music_content = self.content_cache.get(MUSIC_FILE)
-        if music_content is None:
+        if MUSIC_FILE not in self.content_cache:
             self.log("No music image is available to focus.")
+            return
+
+        pause_autoplay = bool(
+            self.config["music_pause_autoplay_on_focus"]
+        )
+
+        await asyncio.to_thread(
+            self.publisher.select_image,
+            MUSIC_FILE,
+            autoplay=False if pause_autoplay else None,
+        )
+
+        self.status(f"Music focus · {reason}")
+
+        if not pause_autoplay:
+            self.music_focus_active = False
+            self.music_focus_until = 0.0
+            self.log(
+                "Music selected directly; album autoplay was left unchanged."
+            )
             return
 
         self.music_focus_active = True
@@ -251,30 +261,12 @@ class DashboardMonitor:
             + max(1, int(self.config["music_focus_seconds"]))
         )
 
+        # ``i_i`` remains the configured seconds-per-image value even while
+        # autoplay is paused, matching the stock web UX request.
         await self.set_rotation(False, "music focus", force=True)
 
-        # SmallTV Pro cannot reliably select a specific album file. To ensure the
-        # music card appears, it is briefly left as the only managed file before
-        # the rest of the gallery is restored.
-        await asyncio.to_thread(
-            self.publisher.reconcile,
-            {MUSIC_FILE},
-            clear_unknown=bool(self.config["clear_unknown_files"]),
-        )
-
-        # Upload music again in case the firmware retained a cached copy.
-        await asyncio.to_thread(
-            self.publisher.publish_bytes,
-            MUSIC_FILE,
-            music_content,
-        )
-
-        await asyncio.sleep(0.65)
-        await self.restore_cached_gallery()
-
-        self.status(f"Music focus · {reason}")
         self.log(
-            "Music shown after a track change; "
+            "Music selected and autoplay paused; "
             f"rotation will resume in {int(self.config['music_focus_seconds'])} s."
         )
 
@@ -303,7 +295,7 @@ class DashboardMonitor:
             self.status("Active · music and panels")
             await self.set_rotation(
                 self.automatic_rotation_desired(True),
-                "fin de music focus",
+                "end of music focus",
                 force=True,
             )
 
