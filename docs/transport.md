@@ -75,3 +75,19 @@ publisher.set_rotation(
 ```
 
 The GeekMagic adapter maps this to `gif_loop=1`, `i_i=5`, and `autoplay=1`.
+
+
+## Refresh a pinned image after replacement
+
+The stock firmware can keep showing the previous decoded frame after a JPEG is
+replaced. Publish the file and select it again:
+
+```python
+publisher.publish_bytes("40_clock.jpg", clock_jpeg)
+publisher.select_image(
+    "40_clock.jpg",
+    autoplay=False,
+)
+```
+
+Pixel Relay performs this sequence automatically for the active pinned view.

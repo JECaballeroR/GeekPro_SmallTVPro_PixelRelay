@@ -5,10 +5,16 @@ from __future__ import annotations
 import queue
 import threading
 from datetime import datetime
+from typing import Any
 import tkinter as tk
 from tkinter import messagebox, scrolledtext, ttk
 
 from .config import DEFAULT_CONFIG, load_saved_config, save_config
+from .constants import (
+    MODULE_CONFIG_TO_VIEW_KEY,
+    VIEW_KEY_TO_LABEL,
+    VIEW_LABEL_TO_KEY,
+)
 from .monitor import DashboardMonitor
 
 class PixelRelayApp(tk.Tk):
@@ -16,7 +22,7 @@ class PixelRelayApp(tk.Tk):
         super().__init__()
 
         self.title("Pixel Relay by JECaballeroR")
-        self.geometry("920x860")
+        self.geometry("920x910")
         self.minsize(840, 740)
         self.configure(bg="#000000")
 
@@ -29,6 +35,19 @@ class PixelRelayApp(tk.Tk):
         self.monitor: DashboardMonitor | None = None
 
         self.variables: dict[str, tk.Variable] = {}
+
+        saved_view_key = str(
+            self.saved_config.get(
+                "pinned_view",
+                DEFAULT_CONFIG["pinned_view"],
+            )
+        ).strip().lower()
+        self.pinned_view_display = tk.StringVar(
+            value=VIEW_KEY_TO_LABEL.get(
+                saved_view_key,
+                VIEW_KEY_TO_LABEL["clock"],
+            )
+        )
 
         self._configure_dark_style()
         self._build_ui()
@@ -159,6 +178,38 @@ class PixelRelayApp(tk.Tk):
 
         return entry
 
+    def _add_choice(
+        self,
+        parent,
+        row: int,
+        label: str,
+        variable: tk.StringVar,
+        values: tuple[str, ...],
+    ):
+        ttk.Label(parent, text=label).grid(
+            row=row,
+            column=0,
+            sticky="w",
+            padx=8,
+            pady=6,
+        )
+
+        combo = ttk.Combobox(
+            parent,
+            textvariable=variable,
+            values=values,
+            state="readonly",
+            width=28,
+        )
+        combo.grid(
+            row=row,
+            column=1,
+            sticky="ew",
+            padx=8,
+            pady=6,
+        )
+        return combo
+
     def _add_check(
         self,
         parent,
@@ -284,39 +335,59 @@ class PixelRelayApp(tk.Tk):
         self._add_check(
             control_tab,
             2,
+            "Pin one view and pause rotation",
+            "pinned_view_enabled",
+        )
+        self._add_choice(
+            control_tab,
+            3,
+            "Pinned view",
+            self.pinned_view_display,
+            tuple(VIEW_KEY_TO_LABEL.values()),
+        )
+        self._add_entry(
+            control_tab,
+            4,
+            "Pinned refresh delay (s)",
+            "pinned_view_refresh_delay_seconds",
+            "float",
+        )
+        self._add_check(
+            control_tab,
+            5,
             "Show music when playback starts or the track changes",
             "music_focus_on_change",
         )
         self._add_check(
             control_tab,
-            3,
+            6,
             "Pause autoplay while music is focused",
             "music_pause_autoplay_on_focus",
         )
         self._add_entry(
             control_tab,
-            4,
+            7,
             "Delay after music upload (s)",
             "music_selection_delay_seconds",
             "float",
         )
         self._add_entry(
             control_tab,
-            5,
+            8,
             "Music focus duration (s)",
             "music_focus_seconds",
             "int",
         )
         self._add_check(
             control_tab,
-            6,
+            9,
             "Keep rotating while music is playing",
             "rotate_while_playing",
         )
 
         control_buttons = ttk.Frame(control_tab)
         control_buttons.grid(
-            row=7,
+            row=10,
             column=0,
             columnspan=2,
             sticky="w",
@@ -331,8 +402,14 @@ class PixelRelayApp(tk.Tk):
         ).pack(side="left", padx=(0, 7))
         ttk.Button(
             control_buttons,
-            text="Pause rotation",
-            command=lambda: self.send_monitor_command("pause_rotation"),
+            text="Pin selected view",
+            command=lambda: self.send_monitor_command(
+                "pause_rotation",
+                VIEW_LABEL_TO_KEY.get(
+                    self.pinned_view_display.get(),
+                    "clock",
+                ),
+            ),
         ).pack(side="left", padx=(0, 7))
         ttk.Button(
             control_buttons,
@@ -350,7 +427,7 @@ class PixelRelayApp(tk.Tk):
             text="Rebuild gallery",
             command=lambda: self.send_monitor_command("rebuild_gallery"),
         ).grid(
-            row=8,
+            row=11,
             column=0,
             columnspan=2,
             sticky="w",
@@ -361,15 +438,15 @@ class PixelRelayApp(tk.Tk):
         ttk.Label(
             control_tab,
             text=(
-                "Music is selected with album_path only. With pause-on-focus "
-                "enabled, the same request includes album_autoplay=0. No app "
-                "switch or immediate second pause request is sent. i_i is used "
-                "when rotation resumes."
+                "Pinned mode selects the chosen album_path with autoplay off. "
+                "Whenever that JPEG is replaced, Pixel Relay selects it again "
+                "so the refreshed image appears. With exactly one enabled "
+                "module, pinned mode is enabled automatically."
             ),
             foreground="#9a9a9a",
             wraplength=680,
         ).grid(
-            row=9,
+            row=12,
             column=0,
             columnspan=2,
             sticky="w",
@@ -660,16 +737,53 @@ class PixelRelayApp(tk.Tk):
             "end",
         ).strip()
 
+        config["pinned_view"] = VIEW_LABEL_TO_KEY.get(
+            self.pinned_view_display.get(),
+            "clock",
+        )
+
+        enabled_view_keys = [
+            view_key
+            for module_name, view_key
+            in MODULE_CONFIG_TO_VIEW_KEY.items()
+            if bool(config.get(module_name, False))
+        ]
+
+        if len(enabled_view_keys) == 1:
+            only_view = enabled_view_keys[0]
+            config["pinned_view_enabled"] = True
+            config["pinned_view"] = only_view
+
+            self.variables["pinned_view_enabled"].set(True)
+            self.pinned_view_display.set(
+                VIEW_KEY_TO_LABEL[only_view]
+            )
+
+        elif (
+            config["pinned_view_enabled"]
+            and config["pinned_view"] not in enabled_view_keys
+            and enabled_view_keys
+        ):
+            fallback = enabled_view_keys[0]
+            config["pinned_view"] = fallback
+            self.pinned_view_display.set(
+                VIEW_KEY_TO_LABEL[fallback]
+            )
+
         return config
 
-    def send_monitor_command(self, command: str):
+    def send_monitor_command(
+        self,
+        command: str,
+        payload: Any = None,
+    ):
         if self.worker_thread is None or not self.worker_thread.is_alive():
             self._append_log(
                 "Start the monitor before using album controls."
             )
             return
 
-        self.command_queue.put((command, None))
+        self.command_queue.put((command, payload))
         self._append_log(f"Command sent: {command}.")
 
     def apply_current_config(self):

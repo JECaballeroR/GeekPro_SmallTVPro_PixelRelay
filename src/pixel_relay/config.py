@@ -32,6 +32,12 @@ DEFAULT_CONFIG: dict[str, Any] = {
     # Album control
     "auto_rotation_enabled": True,
     "rotation_seconds": 5,
+
+    # Pinned view mode keeps one page selected with autoplay disabled.
+    "pinned_view_enabled": False,
+    "pinned_view": "clock",
+    "pinned_view_refresh_delay_seconds": 0.08,
+
     "music_focus_on_change": True,
     "music_pause_autoplay_on_focus": True,
     "music_selection_delay_seconds": 0.08,
@@ -101,6 +107,12 @@ ENV_FIELDS: dict[str, tuple[str, Callable[[str], Any]]] = {
     "PIXEL_CLEAR_UNKNOWN_FILES": ("clear_unknown_files", _as_bool),
     "PIXEL_AUTO_ROTATION_ENABLED": ("auto_rotation_enabled", _as_bool),
     "PIXEL_ROTATION_SECONDS": ("rotation_seconds", int),
+    "PIXEL_PINNED_VIEW_ENABLED": ("pinned_view_enabled", _as_bool),
+    "PIXEL_PINNED_VIEW": ("pinned_view", str),
+    "PIXEL_PINNED_VIEW_REFRESH_DELAY_SECONDS": (
+        "pinned_view_refresh_delay_seconds",
+        float,
+    ),
     "PIXEL_MUSIC_FOCUS_ON_CHANGE": ("music_focus_on_change", _as_bool),
     "PIXEL_MUSIC_PAUSE_AUTOPLAY_ON_FOCUS": (
         "music_pause_autoplay_on_focus",

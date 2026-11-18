@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.0 — 2026-08-04
+
+- Added configurable pinned-view mode with paused album rotation.
+- Added a page selector for music, exchange rate, weather, calendar,
+  notifications, or clock.
+- Reselects the pinned image after each update so refreshed JPEG content is
+  displayed immediately.
+- Automatically enables pinned mode when exactly one module is enabled.
+- Centralized dashboard uploads through one refresh-aware monitor method.
+- Added a manual `Pin selected view` control and environment settings.
+- Added lightweight pin-resolution and refresh tests.
+
 ## 1.3.1 — 2026-08-04
 
 - Removed `open_app=Picture` from music selection.

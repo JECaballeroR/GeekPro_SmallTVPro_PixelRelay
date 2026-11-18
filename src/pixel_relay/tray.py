@@ -69,7 +69,7 @@ class PixelRelayTrayApp:
                 ),
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem(
-                    "Pause rotation",
+                    "Pin configured view",
                     lambda _icon, _item: self.controller.command(
                         "pause_rotation"
                     ),

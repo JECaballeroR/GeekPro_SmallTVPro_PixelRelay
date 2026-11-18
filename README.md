@@ -101,6 +101,26 @@ Tray logs:
 %APPDATA%\PixelRelay\logs\pixel-relay.log
 ```
 
+## Pinned view mode
+
+Pixel Relay can pause album rotation on one selected page. The selected view is
+sent with `album_path` and `album_autoplay=0`.
+
+Replacing a file does not always refresh the active frame on stock GeekMagic
+firmware. Every update of the pinned page therefore performs an additional
+selection request:
+
+```text
+/set?album_path=%2Fimage%2F40_clock.jpg&album_autoplay=0
+```
+
+A pinned clock is reselected after each minute update, so the new time appears
+immediately. The same behavior applies to music, exchange rate, weather,
+calendar, and notifications.
+
+When exactly one module is enabled, Pixel Relay enables pinned mode
+automatically and selects that module.
+
 ## Direct music selection
 
 When Windows playback starts or the track identity changes, Pixel Relay waits

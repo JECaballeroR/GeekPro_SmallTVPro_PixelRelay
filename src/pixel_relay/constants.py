@@ -55,3 +55,42 @@ MODULE_FILES = {
     "custom_enabled": NOTIFICATIONS_FILE,
     "clock_enabled": CLOCK_FILE,
 }
+
+
+# Stable view identifiers shared by configuration, UI and runtime logic.
+VIEW_KEY_TO_FILE = {
+    "music": MUSIC_FILE,
+    "exchange_rate": FX_FILE,
+    "weather": WEATHER_FILE,
+    "calendar": CALENDAR_FILE,
+    "notifications": NOTIFICATIONS_FILE,
+    "clock": CLOCK_FILE,
+}
+
+VIEW_KEY_TO_LABEL = {
+    "music": "Music",
+    "exchange_rate": "Exchange Rate",
+    "weather": "Weather",
+    "calendar": "Calendar",
+    "notifications": "Notifications",
+    "clock": "Clock",
+}
+
+VIEW_LABEL_TO_KEY = {
+    label: key
+    for key, label in VIEW_KEY_TO_LABEL.items()
+}
+
+FILE_TO_VIEW_KEY = {
+    filename: key
+    for key, filename in VIEW_KEY_TO_FILE.items()
+}
+
+MODULE_CONFIG_TO_VIEW_KEY = {
+    "music_enabled": "music",
+    "fx_enabled": "exchange_rate",
+    "weather_enabled": "weather",
+    "calendar_enabled": "calendar",
+    "custom_enabled": "notifications",
+    "clock_enabled": "clock",
+}

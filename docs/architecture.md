@@ -43,3 +43,14 @@ This is a stock-firmware setting and does not require ESPHome.
 - `tox` runs the same test contract across supported Python versions.
 - GitHub Actions runs pre-commit and a Windows Python matrix.
 - transport tests use a fake device and require no hardware.
+
+
+## Pinned-view refresh invariant
+
+All dashboard modules publish through
+`DashboardMonitor.publish_dashboard_image()`. After upload, the monitor checks
+whether that file is the active pinned page. If it is, Pixel Relay sends another
+`album_path` selection with autoplay disabled.
+
+The low-level selection helper lives in `pinning.py`, so it can be tested
+without importing calendar, WinRT, Tkinter, or hardware adapters.

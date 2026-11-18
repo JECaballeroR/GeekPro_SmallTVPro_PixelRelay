@@ -24,6 +24,8 @@ from .constants import (
     MUSIC_FILE,
     NOTIFICATIONS_FILE,
     WEATHER_FILE,
+    FILE_TO_VIEW_KEY,
+    VIEW_KEY_TO_FILE,
 )
 from .devices import GeekMagicDevice
 from .transport import ImagePublisher
@@ -42,6 +44,7 @@ from .modules.music import create_idle_music_slide, create_music_slide
 from .modules.notifications import create_custom_slide
 from .modules.weather import create_weather_slide, fetch_weather_no_key
 from .rendering.common import format_cop, friendly_source
+from .pinning import resolve_pinned_file, select_pinned_image
 
 class DashboardMonitor:
     def __init__(
@@ -86,6 +89,11 @@ class DashboardMonitor:
         # Rotation controller state.
         self.rotation_state: bool | None = None
         self.rotation_override: bool | None = None
+
+        # Runtime-only manual pin. Saved pinning remains in configuration.
+        self.manual_pinned_file: str | None = None
+        self.selected_pinned_file: str | None = None
+
         self.music_focus_active = False
         self.music_focus_until = 0.0
         self.last_playing = False
@@ -121,6 +129,8 @@ class DashboardMonitor:
         self.force_sync = True
         self.rotation_override = None
         self.rotation_state = None
+        self.manual_pinned_file = None
+        self.selected_pinned_file = None
 
         if old_signature != new_signature:
             self.device = GeekMagicDevice(*new_signature)
@@ -153,7 +163,24 @@ class DashboardMonitor:
         enabled = self.enabled_files()
         return [filename for filename in FILE_ORDER if filename in enabled]
 
+    def pinned_view_file(self) -> str | None:
+        return resolve_pinned_file(
+            self.config,
+            self.enabled_files(),
+            rotation_override=self.rotation_override,
+            manual_pinned_file=self.manual_pinned_file,
+        )
+
+    def pinned_view_key(self) -> str | None:
+        pinned_file = self.pinned_view_file()
+        return FILE_TO_VIEW_KEY.get(pinned_file) if pinned_file else None
+
+    def pinned_view_active(self) -> bool:
+        return self.pinned_view_file() is not None
+
     def automatic_rotation_desired(self, media_playing: bool) -> bool:
+        if self.pinned_view_active():
+            return False
         if self.rotation_override is not None:
             return self.rotation_override
 
@@ -166,6 +193,10 @@ class DashboardMonitor:
         return True
 
     async def set_rotation(self, enabled: bool, reason: str, force: bool = False):
+        if enabled and self.pinned_view_active():
+            enabled = False
+            reason = "pinned view"
+
         if self.music_focus_active and enabled:
             return
 
@@ -187,6 +218,83 @@ class DashboardMonitor:
             )
         except Exception as error:
             self.log(f"Could not control rotation: {error}")
+
+    async def select_pinned_view(
+        self,
+        filename: str,
+        *,
+        reason: str,
+        after_update: bool = False,
+        force: bool = False,
+    ) -> None:
+        """Select one page and pause album autoplay."""
+
+        if filename not in self.enabled_files():
+            return
+
+        if (
+            self.selected_pinned_file == filename
+            and not force
+        ):
+            return
+
+        delay = (
+            float(
+                self.config[
+                    "pinned_view_refresh_delay_seconds"
+                ]
+            )
+            if after_update
+            else 0.0
+        )
+
+        await select_pinned_image(
+            self.publisher,
+            filename,
+            delay_seconds=delay,
+        )
+
+        self.rotation_state = False
+        self.selected_pinned_file = filename
+
+        view_key = FILE_TO_VIEW_KEY.get(filename, filename)
+        self.status(f"Pinned · {view_key}")
+        self.log(
+            f"Pinned view selected ({reason}): {filename}."
+        )
+
+    async def ensure_pinned_view(self) -> None:
+        pinned_file = self.pinned_view_file()
+
+        if pinned_file is None:
+            self.selected_pinned_file = None
+            return
+
+        await self.select_pinned_view(
+            pinned_file,
+            reason="pinned mode",
+        )
+
+    async def publish_dashboard_image(
+        self,
+        filename: str,
+        content: bytes,
+    ) -> None:
+        """Publish an image and reselect it when it is currently pinned."""
+
+        await asyncio.to_thread(
+            self.publisher.publish_bytes,
+            filename,
+            content,
+        )
+
+        if self.pinned_view_file() == filename:
+            await self.select_pinned_view(
+                filename,
+                reason="image updated",
+                after_update=True,
+                force=True,
+            )
 
     async def reconcile_files(self):
         keep = self.enabled_files()
@@ -210,8 +318,7 @@ class DashboardMonitor:
                 }
 
                 if MUSIC_FILE not in existing_names:
-                    await asyncio.to_thread(
-                        self.publisher.publish_bytes,
+                    await self.publish_dashboard_image(
                         MUSIC_FILE,
                         idle_content,
                     )
@@ -228,6 +335,20 @@ class DashboardMonitor:
         """
 
         if not bool(self.config["music_enabled"]):
+            return
+
+        pinned_file = self.pinned_view_file()
+        if pinned_file is not None:
+            if pinned_file == MUSIC_FILE:
+                await self.select_pinned_view(
+                    MUSIC_FILE,
+                    reason=reason,
+                    force=True,
+                )
+            else:
+                self.log(
+                    "Music focus skipped because another view is pinned."
+                )
             return
 
         if MUSIC_FILE not in self.content_cache:
@@ -281,6 +402,12 @@ class DashboardMonitor:
         )
 
     async def finish_music_focus_if_needed(self, media_playing: bool):
+        if self.pinned_view_active():
+            self.music_focus_active = False
+            self.music_focus_until = 0.0
+            await self.ensure_pinned_view()
+            return
+
         if not self.music_focus_active:
             await self.set_rotation(
                 self.automatic_rotation_desired(media_playing),
@@ -322,21 +449,64 @@ class DashboardMonitor:
             if command == "pause_rotation":
                 self.rotation_override = False
                 self.music_focus_active = False
-                await self.set_rotation(False, "control manual", force=True)
+
+                requested_file = VIEW_KEY_TO_FILE.get(
+                    str(payload or "").strip().lower()
+                )
+                if requested_file in self.enabled_files():
+                    self.manual_pinned_file = requested_file
+                else:
+                    configured_file = VIEW_KEY_TO_FILE.get(
+                        str(
+                            self.config.get("pinned_view", "")
+                        ).strip().lower()
+                    )
+                    self.manual_pinned_file = (
+                        configured_file
+                        if configured_file in self.enabled_files()
+                        else None
+                    )
+
+                self.selected_pinned_file = None
+
+                if self.pinned_view_active():
+                    await self.ensure_pinned_view()
+                else:
+                    await self.set_rotation(
+                        False,
+                        "manual control",
+                        force=True,
+                    )
 
             elif command == "resume_rotation":
                 self.rotation_override = True
+                self.manual_pinned_file = None
+                self.selected_pinned_file = None
                 self.music_focus_active = False
-                await self.set_rotation(True, "control manual", force=True)
+
+                if self.pinned_view_active():
+                    await self.ensure_pinned_view()
+                else:
+                    await self.set_rotation(
+                        True,
+                        "manual control",
+                        force=True,
+                    )
 
             elif command == "follow_config":
                 self.rotation_override = None
+                self.manual_pinned_file = None
+                self.selected_pinned_file = None
                 self.music_focus_active = False
-                await self.set_rotation(
-                    self.automatic_rotation_desired(media_playing),
-                    "automatic settings",
-                    force=True,
-                )
+
+                if self.pinned_view_active():
+                    await self.ensure_pinned_view()
+                else:
+                    await self.set_rotation(
+                        self.automatic_rotation_desired(media_playing),
+                        "automatic settings",
+                        force=True,
+                    )
 
             elif command == "focus_music":
                 await self.focus_music("control manual")
@@ -372,8 +542,7 @@ class DashboardMonitor:
         )
         self.content_cache[MUSIC_FILE] = image_data
 
-        await asyncio.to_thread(
-            self.publisher.publish_bytes,
+        await self.publish_dashboard_image(
             MUSIC_FILE,
             image_data,
         )
@@ -427,7 +596,7 @@ class DashboardMonitor:
             )
 
         self.content_cache[FX_FILE] = content
-        await asyncio.to_thread(self.publisher.publish_bytes, FX_FILE, content)
+        await self.publish_dashboard_image(FX_FILE, content)
 
     async def update_weather(self, force: bool):
         if not bool(self.config["weather_enabled"]):
@@ -471,7 +640,7 @@ class DashboardMonitor:
             )
 
         self.content_cache[WEATHER_FILE] = content
-        await asyncio.to_thread(self.publisher.publish_bytes, WEATHER_FILE, content)
+        await self.publish_dashboard_image(WEATHER_FILE, content)
 
 
     async def update_calendar(
@@ -552,8 +721,7 @@ class DashboardMonitor:
             CALENDAR_FILE
         ] = content
 
-        await asyncio.to_thread(
-            self.publisher.publish_bytes,
+        await self.publish_dashboard_image(
             CALENDAR_FILE,
             content,
         )
@@ -573,7 +741,7 @@ class DashboardMonitor:
             self.config,
         )
         self.content_cache[CLOCK_FILE] = content
-        await asyncio.to_thread(self.publisher.publish_bytes, CLOCK_FILE, content)
+        await self.publish_dashboard_image(CLOCK_FILE, content)
 
         # Remove the legacy GIF without touching other images.
         try:
@@ -599,7 +767,10 @@ class DashboardMonitor:
 
         content = create_custom_slide(self.config)
         self.content_cache[NOTIFICATIONS_FILE] = content
-        await asyncio.to_thread(self.publisher.publish_bytes, NOTIFICATIONS_FILE, content)
+        await self.publish_dashboard_image(
+            NOTIFICATIONS_FILE,
+            content,
+        )
         self.log("Pixel Relay notification panel updated.")
 
     async def run_async(self):
@@ -651,6 +822,7 @@ class DashboardMonitor:
                 if (
                     (song_changed or playback_started)
                     and bool(self.config["music_focus_on_change"])
+                    and not self.pinned_view_active()
                 ):
                     await self.focus_music(
                         "track changed"
@@ -659,9 +831,13 @@ class DashboardMonitor:
                     )
 
                 await self.process_commands(media["playing"])
+                await self.ensure_pinned_view()
                 await self.finish_music_focus_if_needed(media["playing"])
 
-                if not self.music_focus_active:
+                if self.pinned_view_active():
+                    view_key = self.pinned_view_key() or "view"
+                    self.status(f"Pinned · {view_key}")
+                elif not self.music_focus_active:
                     if media["playing"]:
                         self.status("Active · music and panels")
                     else:
