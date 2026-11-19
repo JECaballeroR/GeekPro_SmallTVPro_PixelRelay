@@ -1,5 +1,7 @@
-# Pixel Relay
 
+![Pixel Relay - GeekPro SmallTV Pro Dashboard](./PixelRelay.png)
+
+# Pixel Relay
 **Pixel Relay by JECaballeroR** is a modular Python image relay and static
 dashboard framework. It can send content to a GeekMagic SmallTV device while
 keeping the stock firmware: **no ESPHome flashing is required**.
